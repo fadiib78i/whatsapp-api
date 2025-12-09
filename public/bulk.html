@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><body>
+<h2>Bulk Sender</h2>
+<input id='id' placeholder='office-1'><br>
+<textarea id='msg' placeholder='message'></textarea><br>
+<input type='file' id='file'><br>
+<button onclick='send()'>Send</button>
+<pre id='out'></pre>
+<script>
+async function send(){
+ let fd=new FormData();
+ fd.append('id',id.value);
+ fd.append('message',msg.value);
+ fd.append('file',file.files[0]);
+ let r=await fetch('/send-bulk',{method:'POST',body:fd});
+ out.textContent=await r.text();
+}
+</script>
+</body></html>
