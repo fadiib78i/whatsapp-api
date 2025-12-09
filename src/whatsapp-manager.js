@@ -4,10 +4,8 @@ const fs = require('fs');
 const path = require('path');
 
 const sessionsPath = process.env.SESSIONS_PATH || path.join(__dirname, '..', 'sessions');
-const qrsPath = path.join(sessionsPath, 'qrs');
 
-if (!fs.existsSync(sessionsPath)) fs.mkdirSync(sessionsPath);
-if (!fs.existsSync(qrsPath)) fs.mkdirSync(qrsPath);
+if (!fs.existsSync(sessionsPath)) fs.mkdirSync(sessionsPath, { recursive:true });
 
 const clients = {};
 
@@ -18,19 +16,23 @@ function normalizeId(id) {
 function restoreAllSessions() {
   const folders = fs.readdirSync(sessionsPath);
   folders.forEach(folder => {
-    const cleanId = normalizeId(folder);
-    console.log(`🔄 Restoring saved session: ${cleanId}`);
-    createClient(cleanId, true);
+    if (folder.startsWith("session-")) {
+      const cleanId = folder.replace("session-", "");
+      console.log("Restoring:", cleanId);
+      createClient(cleanId, true);
+    }
   });
 }
 
 function createClient(id, silent = false) {
   const cleanId = normalizeId(id);
 
-  if (clients[cleanId]) {
-    console.log(`⚠️ Client already exists: ${cleanId}`);
-    return clients[cleanId];
-  }
+  if (clients[cleanId]) return clients[cleanId];
+
+  const clientFolder = path.join(sessionsPath, `session-${cleanId}`);
+  const qrsPath = path.join(clientFolder, 'qrs');
+
+  fs.mkdirSync(qrsPath, { recursive:true });
 
   const client = new Client({
     authStrategy: new LocalAuth({
@@ -40,33 +42,20 @@ function createClient(id, silent = false) {
     puppeteer: {
       headless: true,
       executablePath: '/usr/bin/chromium',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage'
-      ]
+      args: ['--no-sandbox','--disable-setuid-sandbox','--disable-gpu','--disable-dev-shm-usage']
     }
   });
 
   client.on('qr', async qr => {
     if (silent) return;
     const filePath = path.join(qrsPath, `${cleanId}.png`);
-    await QRCode.toFile(filePath, qr, { width: 400 });
-    console.log(`✅ QR saved for ${cleanId}: ${filePath}`);
+    await QRCode.toFile(filePath, qr, { width:400 });
+    console.log("QR saved to:", filePath);
   });
 
-  client.on('authenticated', () => {
-    console.log(`🔐 Authenticated: ${cleanId}`);
-  });
-
-  client.on('ready', () => {
-    console.log(`🚀 WhatsApp READY for ID: ${cleanId}`);
-  });
-
-  client.on('auth_failure', msg => {
-    console.error(`❌ Auth failure for ${cleanId}:`, msg);
-  });
+  client.on('ready', ()=> console.log("READY:", cleanId));
+  client.on('authenticated', ()=> console.log("AUTH OK:", cleanId));
+  client.on('auth_failure', msg => console.error("AUTH FAIL:", msg));
 
   client.initialize();
   clients[cleanId] = client;
@@ -75,17 +64,10 @@ function createClient(id, silent = false) {
 
 async function sendFromId(id, phone, message) {
   const cleanId = normalizeId(id);
+  if (!clients[cleanId]) throw new Error("ID not registered: " + cleanId);
 
-  if (!clients[cleanId]) {
-    throw new Error(`ID not registered: ${cleanId}`);
-  }
-
-  const chatId = phone.replace(/\D/g, '') + '@c.us';
+  const chatId = phone.replace(/\D/g,'') + "@c.us";
   return clients[cleanId].sendMessage(chatId, message);
 }
 
-module.exports = {
-  restoreAllSessions,
-  createClient,
-  sendFromId
-};
+module.exports = { restoreAllSessions, createClient, sendFromId };

@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-api",
-  "version": "1.0.0",
-  "description": "WhatsApp automation with persistent sessions and bulk sending",
+  "version": "1.0.1",
+  "description": "WhatsApp automation with LocalAuth QR fix",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
   "dependencies": {
