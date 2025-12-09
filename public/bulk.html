@@ -1,1 +1,68 @@
-<html><body><h2>Bulk Sender Ready</h2></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>WhatsApp Bulk Sender</title>
+  <style>
+    body { background:#f5f5f5; font-family:Arial; padding:40px; }
+    .box {
+      background:#fff; padding:25px; border-radius:10px;
+      max-width:600px; margin:auto; box-shadow:0 0 10px #ccc;
+    }
+    input, textarea, button { width:100%; margin-top:10px; padding:10px; }
+    textarea { height:160px; }
+    button { background:#25D366; color:#fff; border:none; cursor:pointer; }
+    pre { background:#111; color:#0f0; padding:10px; border-radius:8px; font-size:12px; overflow-x:auto; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>📤 WhatsApp Bulk Sender</h2>
+
+  <label>WhatsApp ID (same as used in /register)</label>
+  <input type="text" id="id" placeholder="majdalphone"/>
+
+  <label>Message Template</label>
+  <textarea id="message" placeholder="שלום וברכה <mother> ..."></textarea>
+
+  <p><b>Placeholders:</b> &lt;mother&gt;, &lt;name&gt;, &lt;gan&gt;</p>
+
+  <label>Excel File (.xlsx)</label>
+  <input type="file" id="file" accept=".xlsx"/>
+
+  <button onclick="sendBulk()">Send</button>
+
+  <h3>Response</h3>
+  <pre id="status"></pre>
+</div>
+
+<script>
+async function sendBulk() {
+  const id = document.getElementById('id').value.trim();
+  const message = document.getElementById('message').value.trim();
+  const file = document.getElementById('file').files[0];
+  const status = document.getElementById('status');
+
+  if (!id || !message || !file) {
+    status.textContent = '❌ Missing id, message, or file';
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('id', id);
+  fd.append('message', message);
+  fd.append('file', file);
+
+  status.textContent = '⏳ Sending...';
+
+  try {
+    const res = await fetch('/send-bulk', { method: 'POST', body: fd });
+    const data = await res.json();
+    status.textContent = JSON.stringify(data, null, 2);
+  } catch (e) {
+    status.textContent = '❌ Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
